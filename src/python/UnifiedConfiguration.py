@@ -2,11 +2,21 @@
 
 import argparse
 import json
+import os
 import struct
 import sys
 
 from external import jmespath
 from firmware import TXType
+
+
+def resolveConfiguration(config, targets):
+    if os.path.isfile(config):
+        with open(config) as f:
+            return json.load(f)
+
+    path = '.'.join(map(lambda s: f'"{s}"', config.split('.')))
+    return jmespath.search(path, targets)
 
 
 def findFirmwareEnd(f):
@@ -84,8 +94,7 @@ def doConfiguration(file, defines, config, moduletype, frequency, platform, devi
         targets = json.load(f)
 
     if config is not None:
-        config ='.'.join(map(lambda s: f'"{s}"', config.split('.')))
-        config = jmespath.search(config, targets)
+        config = resolveConfiguration(config, targets)
     elif not sys.stdin.isatty():
         print('Not running in an interactive shell, leaving the firmware "bare".\n')
         print('The current compile options (user defines) have been included.')
@@ -156,9 +165,8 @@ if __name__ == '__main__':
         targets = json.load(f)
 
     moduletype = 'tx' if '.tx_' in args.target else 'rx'
+    config = resolveConfiguration(args.target, targets)
 
-    config ='.'.join(map(lambda s: f'"{s}"', args.target.split('.')))
-    config = jmespath.search(config, targets)
 
     if config is not None:
         product_name = config['product_name']
